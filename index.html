@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PE计算器">
+<meta name="theme-color" content="#1a1a18" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>市盈率与利润增速计算器 v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #fafaf8; --surface: #ffffff; --surface-alt: #f5f4f0;
+    --text: #1a1a18; --text-2: #52514e; --text-3: #898781;
+    --border: rgba(11,11,11,0.08);
+    --accent: #2a6cb8; --accent-light: #e8f0fa;
+    --accent-2: #1d9e75; --accent-2-light: #e4f5ee;
+    --accent-3: #9b59b6; --accent-3-light: #f0e6f6;
+    --danger: #c44040; --danger-light: #fceaea;
+    --warn: #d4930d; --warn-light: #fdf4e0;
+    --radius: 10px; --radius-lg: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --surface: #1e1e1c; --surface-alt: #272725;
+      --text: #f0efeb; --text-2: #b8b7b0; --text-3: #7a7972;
+      --border: rgba(255,255,255,0.08);
+      --accent: #4a9ae8; --accent-light: #1a2e42;
+      --accent-2: #2cc491; --accent-2-light: #132e24;
+      --accent-3: #b87fd4; --accent-3-light: #2a1a36;
+      --danger: #e66767; --danger-light: #3a1c1c;
+      --warn: #e8a838; --warn-light: #3a2d10;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    min-height: 100vh;
+    padding: calc(2rem + env(safe-area-inset-top)) 1rem calc(3rem + env(safe-area-inset-bottom));
+    -webkit-user-select: none; user-select: none;
+  }
+
+  .container { max-width: 760px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 2rem; }
+  header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
+  header p { font-size: 14px; color: var(--text-3); }
+  .vb {
+    display: inline-block; font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: 20px; margin-left: 8px;
+    background: var(--accent-light); color: var(--accent);
+  }
+
+  .card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 500; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.25rem;
+  }
+
+  .slider-group { margin-bottom: 1.25rem; }
+  .slider-group:last-child { margin-bottom: 0; }
+  .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .slider-label { font-size: 14px; color: var(--text-2); }
+  .slider-value { font-size: 18px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .slider-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+    border-radius: 3px; background: var(--surface-alt); outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--surface);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--surface);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer;
+  }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .metric { background: var(--surface-alt); border-radius: var(--radius); padding: 1rem 1.1rem; }
+  .metric-label { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+  .metric-value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .metric-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .metric.c1 .metric-value { color: var(--accent); }
+  .metric.c2 .metric-value { color: var(--accent-2); }
+  .metric.c3 .metric-value { color: var(--accent-3); }
+
+  .chart-wrap { position: relative; width: 100%; height: 300px; margin: 0.5rem 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-3); margin-top: 8px; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--text-3); padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11px; white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 0.5px solid var(--border); color: var(--text-2); }
+  tr.highlight td { background: var(--accent-light); color: var(--text); font-weight: 500; }
+
+  .formula-box {
+    background: var(--surface-alt); border-radius: var(--radius);
+    padding: 1rem 1.25rem; font-size: 13px; color: var(--text-2); line-height: 1.8;
+  }
+  .formula-box .formula {
+    font-size: 15px; font-weight: 500; color: var(--text); font-family: 'Inter', monospace; text-align: center; margin: 4px 0;
+  }
+
+  .mode-tabs {
+    display: flex; gap: 0; margin-bottom: 1.25rem;
+    border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .mode-tab {
+    flex: 1; padding: 8px 12px; font-size: 13px; font-weight: 500;
+    text-align: center; cursor: pointer; transition: all .15s;
+    background: var(--surface-alt); color: var(--text-3); border: none;
+  }
+  .mode-tab.active { background: var(--accent); color: #fff; }
+  .mode-tab:hover:not(.active) { background: var(--border); }
+
+  .diff-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;
+    padding: 10px 14px; border-radius: var(--radius); font-size: 13px;
+    background: var(--warn-light); color: var(--warn);
+  }
+
+  .safety-row { display: flex; align-items: center; gap: 12px; margin-top: 1rem; }
+  .safety-row label { font-size: 14px; color: var(--text-2); white-space: nowrap; }
+  .safety-row select {
+    padding: 6px 10px; border: 0.5px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); font-size: 14px; cursor: pointer;
+  }
+
+  .tip {
+    font-size: 12px; color: var(--text-3); line-height: 1.6; margin-top: 12px;
+    padding: 10px 14px; background: var(--surface-alt); border-radius: var(--radius);
+  }
+
+  @media (max-width: 500px) {
+    body { padding: 1rem 0.75rem 2rem; }
+    .card { padding: 1.25rem; }
+    .metrics { grid-template-columns: 1fr; }
+    .metric-value { font-size: 20px; }
+    .chart-wrap { height: 250px; }
+    header h1 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>利润回本 PE 计算器 <span class="vb">v3</span></h1>
+    <p>累计净利润（含留存）= 买入价格 → 回本</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title">增长模式</div>
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('const',this)">恒定增速</button>
+      <button class="mode-tab" onclick="setMode('decay',this)">增速衰减</button>
+      <button class="mode-tab" onclick="setMode('staged',this)">分阶段</button>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">目标回本年限</span>
+        <span class="slider-value" id="v-years">10年</span>
+      </div>
+      <input type="range" id="s-years" min="3" max="20" value="10" step="1">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label" id="l-growth">利润年增速</span>
+        <span class="slider-value" id="v-growth">20%</span>
+      </div>
+      <input type="range" id="s-growth" min="0" max="25" value="20" step="0.1">
+    </div>
+
+    <div class="slider-group" id="w-decay" style="display:none">
+      <div class="slider-header">
+        <span class="slider-label">增速年衰减率</span>
+        <span class="slider-value" id="v-decay">10%</span>
+      </div>
+      <input type="range" id="s-decay" min="0" max="30" value="10" step="1">
+      <div class="slider-hint">每年增速下降的比例。如初始20%、衰减10% → 第2年18%、第3年16.2%…</div>
+    </div>
+
+    <div id="w-staged" style="display:none">
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">高速期年数</span>
+          <span class="slider-value" id="v-fast-yrs">5年</span>
+        </div>
+        <input type="range" id="s-fast-yrs" min="1" max="10" value="5" step="1">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">低速期增速</span>
+          <span class="slider-value" id="v-slow-g">8%</span>
+        </div>
+        <input type="range" id="s-slow-g" min="0" max="15" value="8" step="0.5">
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">折现率（要求回报率）</span>
+        <span class="slider-value" id="v-disc">10%</span>
+      </div>
+      <input type="range" id="s-disc" min="0" max="20" value="10" step="0.5">
+      <div class="slider-hint">你期望的年化回报率。折现率越高，未来利润在你眼中越不值钱。设为0则不折现（等价v1）。</div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">安全边际</span>
+        <span class="slider-value" id="v-margin">30%</span>
+      </div>
+      <input type="range" id="s-margin" min="0" max="50" value="30" step="1">
+      <div class="slider-hint">在理论PE上限基础上打折。0%=不打折，30%=按7折买入，50%=按5折买入。</div>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric c1">
+      <div class="metric-label">v3 折现PE</div>
+      <div class="metric-value" id="m-pe3">—</div>
+      <div class="metric-sub">净利润折现累加</div>
+    </div>
+    <div class="metric c2">
+      <div class="metric-label">安全买入PE</div>
+      <div class="metric-value" id="m-safe">—</div>
+      <div class="metric-sub" id="m-margin-note"></div>
+    </div>
+    <div class="metric c3">
+      <div class="metric-label">v1 简单PE</div>
+      <div class="metric-value" id="m-pe1">—</div>
+      <div class="metric-sub">名义利润直接累加</div>
+    </div>
+  </div>
+
+  <div id="diff-box" class="diff-row"></div>
+
+  <div class="card">
+    <div class="card-title">逐年利润与折现</div>
+    <div class="chart-wrap">
+      <canvas id="bar-chart"></canvas>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:rgba(42,120,214,0.25)"></span>名义净利润</span>
+      <span><span class="dot" style="background:#2a78d6"></span>折现后净利润</span>
+      <span><span class="dot" style="background:#1baf7a"></span>累计折现利润</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">PE上限 vs 利润增速</div>
+    <div class="chart-wrap">
+      <canvas id="line-chart"></canvas>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#2a78d6"></span>v3 折现PE</span>
+      <span><span class="dot" style="background:rgba(155,89,182,0.4)"></span>v1 简单PE（无折现）</span>
+      <span><span class="dot" style="background:#1baf7a;opacity:0.5"></span>安全PE</span>
+      <span><span class="dot" style="background:#e34948;border-radius:50%"></span>当前选择</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">速查表</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>增速</th>
+            <th>v1 简单PE</th>
+            <th>v3 折现PE</th>
+            <th>折现损耗</th>
+            <th>安全PE</th>
+            <th>10年末利润倍数</th>
+          </tr>
+        </thead>
+        <tbody id="ref-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">计算逻辑</div>
+    <div class="formula-box">
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--text-3)">v1 简单版</div>
+        <div class="formula">PE = Σ (1+gₜ)ᵗ</div>
+        <div style="font-size:12px;text-align:center">直接累加名义利润，不做折现</div>
+      </div>
+      <div style="border-top:0.5px solid var(--border);padding-top:10px">
+        <div style="font-size:12px;color:var(--accent)">v3 修正版</div>
+        <div class="formula">PE = Σ (1+gₜ)ᵗ / (1+d)ᵗ⁺¹</div>
+        <div style="font-size:12px;text-align:center">每年净利润按折现率折算为现值后累加</div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;text-align:center;border-top:0.5px solid var(--border);padding-top:10px">
+        gₜ = 第t年增速（支持恒定/衰减/分阶段） · d = 折现率<br>
+        回本定义：累计净利润（含留存再投资部分）≥ 买入价格
+      </div>
+    </div>
+    <div class="tip">
+      <strong>v3 vs v2 的区别：</strong>移除了ROIC再投资扣除。理由：净利润无论分红还是留存，都属于股东——留存部分增加了公司净资产（即你持有的权益），不应从"回本"中扣除。唯一保留的修正是折现（货币时间价值）和增速衰减（均值回归的现实建模）。
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function() {
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? '#2c2c2a' : '#e8e7e2';
+  const tickColor = '#898781';
+
+  let mode = 'const';
+  const $ = id => document.getElementById(id);
+
+  function setMode(m, btn) {
+    mode = m;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    $('w-decay').style.display = m === 'decay' ? '' : 'none';
+    $('w-staged').style.display = m === 'staged' ? '' : 'none';
+    $('l-growth').textContent = m === 'const' ? '利润年增速' : '初始利润年增速';
+    update();
+  }
+  window.setMode = setMode;
+
+  function getG(t, g0, decayRate, fastYrs, slowG) {
+    if (mode === 'const') return g0;
+    if (mode === 'decay') return g0 * Math.pow(1 - decayRate / 100, t);
+    return t < fastYrs ? g0 : slowG;
+  }
+
+  // V1: simple sum of nominal profits
+  function calcV1(n, g0, decayRate, fastYrs, slowG) {
+    let sum = 0, e = 1;
+    for (let t = 0; t < n; t++) {
+      if (t > 0) e *= (1 + getG(t, g0, decayRate, fastYrs, slowG) / 100);
+      sum += e;
+    }
+    return sum;
+  }
+
+  // V3: discounted sum of total profits (no reinvestment haircut)
+  function calcV3Detail(n, g0, disc, decayRate, fastYrs, slowG) {
+    const years = [];
+    let e = 1, cumPV = 0;
+    for (let t = 0; t < n; t++) {
+      const gt = getG(t, g0, decayRate, fastYrs, slowG);
+      if (t > 0) e *= (1 + gt / 100);
+      const pv = disc === 0 ? e : e / Math.pow(1 + disc / 100, t + 1);
+      cumPV += pv;
+      years.push({ year: t + 1, gt, earnings: e, pv, cumPV });
+    }
+    return { years, totalPV: cumPV };
+  }
+
+  function calcV3(n, g0, disc, decayRate, fastYrs, slowG) {
+    return calcV3Detail(n, g0, disc, decayRate, fastYrs, slowG).totalPV;
+  }
+
+  let barChart, lineChart;
+
+  function buildBarChart(detail) {
+    const labels = detail.years.map(y => '第' + y.year + '年');
+    const nomData = detail.years.map(y => Math.round(y.earnings * 100) / 100);
+    const pvData = detail.years.map(y => Math.round(y.pv * 100) / 100);
+    const cumData = detail.years.map(y => Math.round(y.cumPV * 100) / 100);
+
+    const datasets = [
+      {
+        label: '名义净利润', data: nomData,
+        backgroundColor: isDark ? 'rgba(74,154,232,0.15)' : 'rgba(42,120,214,0.15)',
+        borderColor: isDark ? 'rgba(74,154,232,0.25)' : 'rgba(42,120,214,0.25)',
+        borderWidth: 1, borderRadius: { topLeft: 3, topRight: 3 }, barPercentage: 0.7
+      },
+      {
+        label: '折现后净利润', data: pvData,
+        backgroundColor: isDark ? 'rgba(74,154,232,0.6)' : 'rgba(42,120,214,0.7)',
+        borderRadius: { topLeft: 3, topRight: 3 }, barPercentage: 0.7
+      },
+      {
+        type: 'line', label: '累计折现利润', data: cumData,
+        borderColor: '#1baf7a', borderWidth: 2,
+        pointRadius: 3, pointBackgroundColor: '#1baf7a',
+        pointBorderColor: isDark ? '#1e1e1c' : '#fff', pointBorderWidth: 1.5,
+        tension: 0.3, fill: false
+      }
+    ];
+
+    if (barChart) {
+      barChart.data.labels = labels;
+      barChart.data.datasets.forEach((ds, i) => { ds.data = datasets[i].data; });
+      barChart.update('none');
+      return;
+    }
+
+    barChart = new Chart($('bar-chart'), {
+      type: 'bar', data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: tickColor, boxWidth: 10, font: { size: 11 }, padding: 14 } },
+          tooltip: { callbacks: { label: item => item.dataset.label + ': ' + item.parsed.y.toFixed(2) } }
+        },
+        scales: {
+          x: { ticks: { color: tickColor, font: { size: 11 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+          y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function buildLineChart(n, currentG, disc, margin, decayRate, fastYrs, slowG) {
+    const gs = [];
+    for (let i = 0; i <= 250; i++) gs.push(i / 10);
+
+    const v3Data = gs.map(g => Math.round(calcV3(n, g, disc, decayRate, fastYrs, slowG) * 100) / 100);
+    const v1Data = gs.map(g => Math.round(calcV1(n, g, decayRate, fastYrs, slowG) * 100) / 100);
+    const safeData = v3Data.map(v => Math.round(v * margin * 100) / 100);
+
+    const hlIdx = Math.round(currentG * 10);
+    const ptBg = gs.map((_, i) => i === hlIdx ? '#e34948' : 'transparent');
+    const ptR = gs.map((_, i) => i === hlIdx ? 7 : 0);
+    const ptBd = gs.map((_, i) => i === hlIdx ? (isDark ? '#1e1e1c' : '#fff') : 'transparent');
+
+    if (lineChart) {
+      lineChart.data.labels = gs.map(g => g.toFixed(1) + '%');
+      lineChart.data.datasets[0].data = v3Data;
+      lineChart.data.datasets[0].pointBackgroundColor = ptBg;
+      lineChart.data.datasets[0].pointRadius = ptR;
+      lineChart.data.datasets[0].pointBorderColor = ptBd;
+      lineChart.data.datasets[1].data = v1Data;
+      lineChart.data.datasets[2].data = safeData;
+      lineChart.update('none');
+      return;
+    }
+
+    lineChart = new Chart($('line-chart'), {
+      type: 'line',
+      data: {
+        labels: gs.map(g => g.toFixed(1) + '%'),
+        datasets: [{
+          label: 'v3 折现PE', data: v3Data,
+          borderColor: '#2a78d6',
+          backgroundColor: isDark ? 'rgba(74,154,232,0.08)' : 'rgba(42,120,214,0.08)',
+          fill: true, borderWidth: 2, tension: 0.3,
+          pointBackgroundColor: ptBg, pointRadius: ptR, pointBorderColor: ptBd, pointBorderWidth: 2
+        }, {
+          label: 'v1 简单PE', data: v1Data,
+          borderColor: isDark ? 'rgba(184,127,212,0.4)' : 'rgba(155,89,182,0.35)',
+          borderWidth: 1.5, borderDash: [6, 4], tension: 0.3, pointRadius: 0, fill: false
+        }, {
+          label: '安全PE', data: safeData,
+          borderColor: isDark ? 'rgba(27,175,122,0.4)' : 'rgba(27,175,122,0.35)',
+          borderWidth: 1.5, borderDash: [4, 3], tension: 0.3, pointRadius: 0, fill: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: items => '利润增速 ' + items[0].label,
+            label: item => item.dataset.label + ': ' + item.parsed.y.toFixed(1) + '倍'
+          } }
+        },
+        scales: {
+          x: { title: { display: true, text: '利润增速', color: tickColor, font: { size: 11 } }, ticks: { color: tickColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { display: false } },
+          y: { title: { display: true, text: 'PE（倍）', color: tickColor, font: { size: 11 } }, ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function buildTable(n, currentG, disc, margin, decayRate, fastYrs, slowG) {
+    const rows = [0, 3, 5, 8, 10, 12, 15, 18, 20, 22, 25];
+    const body = $('ref-body');
+    body.innerHTML = '';
+    rows.forEach(g => {
+      const pe1 = calcV1(n, g, decayRate, fastYrs, slowG);
+      const pe3 = calcV3(n, g, disc, decayRate, fastYrs, slowG);
+      const diff = pe1 > 0 ? ((pe1 - pe3) / pe1 * 100) : 0;
+      // 10th year earnings multiple
+      let e10 = 1;
+      for (let t = 1; t < n; t++) e10 *= (1 + getG(t, g, decayRate, fastYrs, slowG) / 100);
+      const tr = document.createElement('tr');
+      if (Math.abs(g - currentG) < 0.05) tr.className = 'highlight';
+      tr.innerHTML =
+        '<td>' + g + '%</td>' +
+        '<td>' + pe1.toFixed(1) + '</td>' +
+        '<td>' + pe3.toFixed(1) + '</td>' +
+        '<td style="color:var(--danger)">−' + diff.toFixed(0) + '%</td>' +
+        '<td>' + (pe3 * margin).toFixed(1) + '</td>' +
+        '<td>' + e10.toFixed(1) + 'x</td>';
+      body.appendChild(tr);
+    });
+  }
+
+  function update() {
+    const n = parseInt($('s-years').value);
+    const g0 = parseFloat($('s-growth').value);
+    const disc = parseFloat($('s-disc').value);
+    const marginPct = parseInt($('s-margin').value);
+    const margin = 1 - marginPct / 100;
+    const decayRate = parseInt($('s-decay').value);
+    const fastYrs = parseInt($('s-fast-yrs').value);
+    const slowG = parseFloat($('s-slow-g').value);
+
+    $('v-years').textContent = n + '年';
+    $('v-growth').textContent = (g0 % 1 === 0 ? g0 : g0.toFixed(1)) + '%';
+    $('v-disc').textContent = disc + '%';
+    $('v-decay').textContent = decayRate + '%';
+    $('v-fast-yrs').textContent = fastYrs + '年';
+    $('v-slow-g').textContent = slowG + '%';
+
+    const pe1 = calcV1(n, g0, decayRate, fastYrs, slowG);
+    const detail = calcV3Detail(n, g0, disc, decayRate, fastYrs, slowG);
+    const pe3 = detail.totalPV;
+    const safePE = pe3 * margin;
+
+    $('m-pe3').textContent = pe3.toFixed(1) + '倍';
+    $('m-safe').textContent = safePE.toFixed(1) + '倍';
+    $('m-pe1').textContent = pe1.toFixed(1) + '倍';
+
+    $('v-margin').textContent = marginPct + '%';
+    if (marginPct > 0) {
+      $('m-margin-note').textContent = '按' + Math.round(margin * 100) + '折买入';
+    } else {
+      $('m-margin-note').textContent = '无安全边际';
+    }
+
+    const diffBox = $('diff-box');
+    if (disc === 0 && mode === 'const') {
+      diffBox.style.display = 'none';
+    } else {
+      diffBox.style.display = '';
+      const overest = pe1 > 0 ? ((pe1 - pe3) / pe1 * 100) : 0;
+      let reasons = [];
+      if (disc > 0) reasons.push('折现效应');
+      if (mode !== 'const') reasons.push('增速衰减');
+      diffBox.innerHTML = '⚠️ v1 简单版高估了 <strong>' + overest.toFixed(1) + '%</strong>（' +
+        pe1.toFixed(1) + ' → ' + pe3.toFixed(1) + '），原因：' + reasons.join(' + ');
+    }
+
+    buildBarChart(detail);
+    buildLineChart(n, g0, disc, margin, decayRate, fastYrs, slowG);
+    buildTable(n, g0, disc, margin, decayRate, fastYrs, slowG);
+  }
+
+  ['s-years','s-growth','s-disc','s-decay','s-fast-yrs','s-slow-g'].forEach(id => {
+    $(id).addEventListener('input', update);
+  });
+  $('s-margin').addEventListener('input', update);
+
+  update();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
